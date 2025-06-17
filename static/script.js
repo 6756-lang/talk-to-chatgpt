@@ -1,21 +1,35 @@
-function askQuestion() {
-    const userInput = document.getElementById("userInput").value;
-    document.getElementById("question").innerText = "You: " + userInput;
-    fetch("/ask", {
-        method: "POST",
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({question: userInput})
-    })
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById("response").innerText = "ChatGPT: " + data.answer;
-        const audio = document.getElementById("audio");
-        audio.src = data.audio_url;
-        audio.load();
-        audio.play();
+function startListening() {
+    const recognition = new webkitSpeechRecognition(); // or SpeechRecognition
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
-        const downloadLink = document.getElementById("downloadLink");
-        downloadLink.href = data.audio_url;
-        downloadLink.style.display = "inline";
-    });
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('question').textContent = "You: " + transcript;
+
+        fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question: transcript })
+        })
+        .then(res => res.blob())
+        .then(blob => {
+            const audioUrl = URL.createObjectURL(blob);
+            const audio = document.getElementById('audio');
+            audio.src = audioUrl;
+            audio.play();
+
+            // download link
+            const link = document.getElementById('downloadLink');
+            link.href = audioUrl;
+            link.style.display = 'inline';
+        });
+    };
+
+    recognition.onerror = function(event) {
+        alert('Speech recognition error: ' + event.error);
+    };
 }
